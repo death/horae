@@ -3,6 +3,7 @@
 ;;;; +----------------------------------------------------------------+
 
 (defpackage #:horae/inotify
+  (:documentation "Bindings for inotify.")
   (:use #:cl)
   (:import-from #:cffi #:defbitfield #:defctype
                 #:translate-from-foreign #:defcfun
@@ -20,8 +21,7 @@
    #:inotify-wd
    #:inotify-mask
    #:inotify-cookie
-   #:inotify-name)
-  (:documentation "Bindings for inotify."))
+   #:inotify-name))
 
 (in-package #:horae/inotify)
 

@@ -3,6 +3,7 @@
 ;;;; +----------------------------------------------------------------+
 
 (defpackage #:horae/main
+  (:documentation "The application.")
   (:use #:cl #:horae/inotify #:horae/script-symbols #:horae/tasks)
   (:import-from #:asdf #:component-pathname #:find-system)
   (:import-from #:log4cl)
@@ -10,8 +11,7 @@
   (:import-from #:alexandria #:make-keyword)
   (:import-from #:constantia #:outs)
   (:import-from #:sb-sys #:serve-all-events)
-  (:export #:main)
-  (:documentation "The application."))
+  (:export #:main))
 
 (in-package #:horae/main)
 

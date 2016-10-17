@@ -3,9 +3,10 @@
 ;;;; +----------------------------------------------------------------+
 
 (defpackage #:horae/tasks
+  (:documentation "Tasks that run at intervals.")
   (:use #:cl)
   (:import-from #:constantia #:outs #:out)
-  (:import-from #:alexandria #:hash-table-values)
+  (:import-from #:alexandria #:hash-table-values #:nconcf)
   (:import-from #:bordeaux-threads #:make-lock #:with-lock-held
                 #:make-condition-variable #:condition-notify
                 #:condition-wait #:make-thread)
@@ -17,8 +18,7 @@
    #:list-tasks
    #:remove-task
    #:update-task-interval
-   #:remove-all-tasks)
-  (:documentation "Tasks that run at intervals."))
+   #:remove-all-tasks))
 
 (in-package #:horae/tasks)
 
@@ -97,9 +97,7 @@ command."
   "Add the supplied command to the task's pending commands queue."
   (check-type command command)
   (with-lock-held ((task-lock task))
-    (setf (task-pending-commands task)
-          (append (task-pending-commands task)
-                  (list command)))
+    (nconcf (task-pending-commands task) (list command))
     (condition-notify (task-has-pending-commands task)))
   (values))
 
@@ -147,9 +145,10 @@ it."))
 (defun task-execute-commands (task)
   "Execute pending commands for the task."
   (with-lock-held ((task-lock task))
-    (dolist (command (task-pending-commands task))
-      (task-execute-command command task))
-    (setf (task-pending-commands task) '())))
+    (unwind-protect
+         (dolist (command (task-pending-commands task))
+           (task-execute-command command task))
+      (setf (task-pending-commands task) '()))))
 
 (defun task-execute-command (command task)
   "Execute a task command."
@@ -186,8 +185,8 @@ commands.  Return true if the task should run, and false otherwise."
 (defclass task-manager ()
   ((table :initform (make-hash-table :test 'equal) :reader task-manager-table)
    (lock :initform (make-lock) :reader task-manager-lock))
-  (:documentation "Represents a task manager that maintains a table
-of currently active tasks."))
+  (:documentation "Represents a task manager that maintains a table of
+currently active tasks."))
 
 (defvar *task-manager*
   (make-instance 'task-manager)
@@ -222,10 +221,10 @@ task manager."
   (with-lock-held ((task-manager-lock task-manager))
     (assert (null (find-task name task-manager)))
     (let ((task (make-instance 'task
-                                 :name name
-                                 :run-function run-function
-                                 :interval interval
-                                 :manager task-manager)))
+                               :name name
+                               :run-function run-function
+                               :interval interval
+                               :manager task-manager)))
       (setf (task-thread task) (make-task-thread task))
       (setf (find-task name task-manager) task)))
   (values))

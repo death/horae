@@ -3,6 +3,6 @@
 ;;;; +----------------------------------------------------------------+
 
 (uiop:define-package #:horae/all
+  (:documentation "HORAE toplevel package.")
   (:nicknames #:horae)
-  (:use-reexport #:horae/main)
-  (:documentation "HORAE toplevel package."))
+  (:use-reexport #:horae/main))
