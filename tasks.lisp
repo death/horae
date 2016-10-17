@@ -25,6 +25,7 @@
 ;;; Task intervals
 
 (deftype interval ()
+  "Represents a task interval, number of seconds."
   'integer)
 
 ;;; Task commands
