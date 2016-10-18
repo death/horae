@@ -8,7 +8,7 @@
   (:import-from #:asdf #:component-pathname #:find-system)
   (:import-from #:log4cl)
   (:import-from #:cl-fad #:list-directory)
-  (:import-from #:alexandria #:make-keyword)
+  (:import-from #:alexandria #:make-keyword #:starts-with-subseq)
   (:import-from #:constantia #:outs)
   (:import-from #:sb-sys #:serve-all-events)
   (:export #:main))
@@ -40,9 +40,11 @@
         (log:debug "Scripts directory change mask=~A name=~A"
                    (inotify-mask event) (inotify-name event))
         (let ((pathname (merge-pathnames (inotify-name event) *scripts-directory*)))
-          (if (probe-file pathname)
-              (register-script pathname)
-              (unregister-script pathname))))
+          (cond ((dormant-script-p pathname))
+                ((probe-file pathname)
+                 (register-script pathname))
+                (t
+                 (unregister-script pathname)))))
     (error (e)
       (log:error "~A" e))))
 
@@ -55,8 +57,13 @@
 accordance with the scripts found in the script directory."
   (remove-all-tasks)
   (dolist (pathname (list-directory *scripts-directory*))
-    (with-simple-restart (continue "Skip script ~S" pathname)
-      (register-script pathname))))
+    (unless (dormant-script-p pathname)
+      (with-simple-restart (continue "Skip script ~S" pathname)
+        (register-script pathname)))))
+
+(defun dormant-script-p (pathname)
+  "Return true if the script should be ignored, and false otherwise."
+  (starts-with-subseq "ig-" (pathname-name pathname)))
 
 (defun register-script (pathname)
   "Create or update the task associated with the script."

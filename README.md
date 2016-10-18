@@ -9,6 +9,9 @@ Start it by calling `(horae:main)`.  Then you can create/modify/delete
 scripts in the `horae/scripts/` directory at will, and horae will take
 notice.
 
+An alternative to deleting a script in order to disable it is to
+rename it to something that begins with `ig-`.
+
 Each script is loaded in the context of a temporary package that uses
 `common-lisp`, as well as a horae-specific package that exports
 symbols relevant to defining intervals.
