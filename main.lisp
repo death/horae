@@ -39,12 +39,7 @@
       (progn
         (log:debug "Scripts directory change mask=~A name=~A"
                    (inotify-mask event) (inotify-name event))
-        (let ((pathname (merge-pathnames (inotify-name event) *scripts-directory*)))
-          (cond ((dormant-script-p pathname))
-                ((probe-file pathname)
-                 (register-script pathname))
-                (t
-                 (unregister-script pathname)))))
+        (handle-script (merge-pathnames (inotify-name event) *scripts-directory*)))
     (error (e)
       (log:error "~A" e))))
 
@@ -57,9 +52,17 @@
 accordance with the scripts found in the script directory."
   (remove-all-tasks)
   (dolist (pathname (list-directory *scripts-directory*))
-    (unless (dormant-script-p pathname)
-      (with-simple-restart (continue "Skip script ~S" pathname)
-        (register-script pathname)))))
+    (with-simple-restart (continue "Skip script ~S" pathname)
+      (handle-script pathname))))
+
+(defun handle-script (pathname)
+  "If the script is dormant, do nothing; if the script file exists,
+register it; otherwise, unregister it."
+  (cond ((dormant-script-p pathname))
+        ((probe-file pathname)
+         (register-script pathname))
+        (t
+         (unregister-script pathname))))
 
 (defun dormant-script-p (pathname)
   "Return true if the script should be ignored, and false otherwise."
