@@ -11,18 +11,27 @@
   (:import-from #:alexandria #:make-keyword #:starts-with-subseq)
   (:import-from #:constantia #:outs)
   (:import-from #:sb-sys #:serve-all-events)
+  (:import-from #:uiop #:getcwd #:*command-line-arguments* #:*image-dumped-p*)
   (:export #:main))
 
 (in-package #:horae/main)
 
-(defparameter *scripts-directory*
+(defvar *scripts-directory* nil
+  "The directory in which the scripts are assumed to reside.")
+
+(defun compute-scripts-directory ()
+  "Return the directory in which the scripts should reside."
   (merge-pathnames
    (make-pathname :directory '(:relative "scripts"))
-   (component-pathname (find-system "horae")))
-  "The directory in which the scripts reside.")
+   (if (eq *image-dumped-p* :executable)
+       (getcwd)
+       (component-pathname (find-system "horae")))))
 
 (defun main ()
   "Entry point for HORAE."
+  (when (member "debug" *command-line-arguments* :test #'equal)
+    (log:config :debug))
+  (setf *scripts-directory* (compute-scripts-directory))
   (ensure-directories-exist *scripts-directory*)
   (log:debug *scripts-directory*)
   (reset-scripts)
