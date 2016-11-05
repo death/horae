@@ -139,8 +139,7 @@ it."))
 (defun task-run (task)
   "Run the task."
   (task-log log:debug "Running task.")
-  (ignore-errors
-   (funcall (task-run-function task))))
+  (funcall (task-run-function task)))
 
 (defun task-execute-commands (task)
   "Execute pending commands for the task."
