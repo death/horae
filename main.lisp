@@ -122,10 +122,15 @@ seconds)."
 
 (defun run-script (pathname)
   "Run the script by loading it."
-  (let ((*package* (make-package
-                    (outs "HORAE/TEMP-PACKAGE-" (task-name pathname))
-                    :use (load-time-value
-                          (list (find-package "COMMON-LISP")
-                                (find-package "HORAE/SCRIPT-SYMBOLS"))))))
-    (unwind-protect (load pathname)
-      (delete-package *package*))))
+  (let ((*package* (intern-task-package (task-name pathname))))
+    (load pathname)))
+
+(defun intern-task-package (task-name)
+  "Return the package appropriate for loading the task, creating it if
+necessary."
+  (let ((package-name (outs "HORAE/TASK-PACKAGE-" task-name)))
+    (or (find-package package-name)
+        (make-package package-name
+                      :use (load-time-value
+                            (list (find-package "COMMON-LISP")
+                                  (find-package "HORAE/SCRIPT-SYMBOLS")))))))
