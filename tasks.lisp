@@ -3,7 +3,7 @@
 ;;;; +----------------------------------------------------------------+
 
 (defpackage #:horae/tasks
-  (:documentation "Tasks that run at intervals.")
+  (:documentation "Tasks that run between delays.")
   (:use #:cl)
   (:import-from #:constantia #:outs #:out)
   (:import-from #:alexandria #:hash-table-values #:nconcf)
@@ -17,15 +17,15 @@
    #:add-task
    #:list-tasks
    #:remove-task
-   #:update-task-interval
+   #:set-task-delay-function
    #:remove-all-tasks))
 
 (in-package #:horae/tasks)
 
-;;; Task intervals
+;;; Task delay
 
-(deftype interval ()
-  "Represents a task interval, number of seconds."
+(deftype delay ()
+  "Represents a task delay, number of seconds."
   'integer)
 
 ;;; Task commands
@@ -37,9 +37,11 @@
 ;;   Stop the task thread and remove the task from the task
 ;;   manager.
 ;;
-;; :UPDATE-INTERVAL n
+;; :SET-DELAY-FUNCTION function
 ;;
-;;   Set a new interval for the task.
+;;   Set a new delay function for the task.  A delay function takes
+;;   the owning task object as argument and returns an amount of time,
+;;   in seconds, to wait until running the task.
 ;;
 
 (deftype command ()
@@ -67,26 +69,26 @@ otherwise."
   (and (command-p command)
        (eq (command-name command) name)))
 
-(defun update-interval (command)
-  "Return the update interval supplied in the update-interval
+(defun delay-function (command)
+  "Return the delay function supplied in the :SET-DELAY-FUNCTION
 command."
-  (assert (specific-command-p :update-interval command))
-  (let ((interval (first (command-arguments command))))
-    (check-type interval interval)
-    interval))
+  (assert (specific-command-p :set-delay-function command))
+  (let ((delay-function (first (command-arguments command))))
+    (check-type delay-function function)
+    delay-function))
 
 ;;; Tasks
 
 (defclass task ()
   ((name :initarg :name :reader task-name)
    (run-function :initarg :run-function :reader task-run-function)
-   (interval :initarg :interval :accessor task-interval)
+   (delay-function :initarg :delay-function :accessor task-delay-function)
    (manager :initarg :manager :accessor task-manager)
    (pending-commands :initform '() :accessor task-pending-commands)
    (thread :initform nil :accessor task-thread)
    (lock :initform (make-lock) :reader task-lock)
    (has-pending-commands :initform (make-condition-variable) :reader task-has-pending-commands))
-  (:documentation "Represents a task that should run every interval."))
+  (:documentation "Represents a task that should run between delays."))
 
 (defmethod print-object ((object task) stream)
   (print-unreadable-object (object stream :type t)
@@ -154,15 +156,15 @@ it."))
   (task-log log:debug "Executing command " command)
   (cond ((specific-command-p :remove command)
          (signal 'stop-task-thread))
-        ((specific-command-p :update-interval command)
-         (setf (task-interval task) (update-interval command)))
+        ((specific-command-p :set-delay-function command)
+         (setf (task-delay-function task) (delay-function command)))
         (t
          (task-log log:warn "Don't know how to execute this command; ignoring."))))
 
 (defun task-wait-to-run (task)
   "Wait until it's time to run the task, or we have some pending
 commands.  Return true if the task should run, and false otherwise."
-  (let ((time-to-wait (task-interval task)))
+  (let ((time-to-wait (funcall (task-delay-function task) task)))
     (task-log log:debug "Want to wait " time-to-wait " seconds.")
     (loop
      (when (<= time-to-wait 0)
@@ -176,6 +178,9 @@ commands.  Return true if the task should run, and false otherwise."
          (task-log log:debug "Waited " (- (get-universal-time) wait-start-time) " seconds.")
          (decf time-to-wait (- (get-universal-time) wait-start-time))
          (when triggered
+           ;; If we define more commands, we may want to implement a
+           ;; way to wait the remaining delay without starting over,
+           ;; but for now this doesn't seem critical.
            (task-log log:debug "Got pending commands; no longer waiting.")
            (return-from task-wait-to-run nil)))))))
 
@@ -215,14 +220,14 @@ task manager."
     (setf (task-manager task) nil))
   (values))
 
-(defun add-task (name run-function interval &optional (task-manager *task-manager*))
+(defun add-task (name run-function delay-function &optional (task-manager *task-manager*))
   "Add a task to the task manager and activate it."
   (with-lock-held ((task-manager-lock task-manager))
     (assert (null (find-task name task-manager)))
     (let ((task (make-instance 'task
                                :name name
                                :run-function run-function
-                               :interval interval
+                               :delay-function delay-function
                                :manager task-manager)))
       (setf (task-thread task) (make-task-thread task))
       (setf (find-task name task-manager) task)))
@@ -242,14 +247,14 @@ task manager."
           (log:debug "Tried to remove nonexisting task with name ~S." name))))
   (values))
 
-(defun update-task-interval (name new-interval &optional (task-manager *task-manager*))
-  "Set a new running interval for the appropriate task in the task
+(defun set-task-delay-function (name new-delay-function &optional (task-manager *task-manager*))
+  "Set a new delay function for the appropriate task in the task
 manager."
   (with-lock-held ((task-manager-lock task-manager))
     (let ((task (find-task name task-manager)))
       (if (null task)
           (error "No task with name ~S." name)
-          (task-queue-command (list :update-interval new-interval) task))))
+          (task-queue-command (list :set-delay-function new-delay-function) task))))
   (values))
 
 (defun remove-all-tasks (&optional (task-manager *task-manager*))

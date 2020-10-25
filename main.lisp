@@ -80,17 +80,17 @@ register it; otherwise, unregister it."
 (defun register-script (pathname)
   "Create or update the task associated with the script."
   (let ((name (task-name pathname))
-        (interval (read-task-interval pathname)))
+        (delay-function (make-task-delay-function-from-script pathname)))
     (if (member name (list-tasks))
-        (update-task-interval name interval)
-        (add-task name (lambda () (run-script pathname)) interval))))
+        (set-task-delay-function name delay-function)
+        (add-task name (lambda () (run-script pathname)) delay-function))))
 
 (defun unregister-script (pathname)
   "Remove the task associated with the script."
   (remove-task (task-name pathname)))
 
-(defun read-task-interval (pathname)
-  "Read the task interval from the script."
+(defun make-task-delay-function-from-script (pathname)
+  "Create a task delay function from the script."
   (with-open-file (stream pathname :direction :input)
     (let ((spec (let ((*package* (load-time-value
                                   (find-package "HORAE/SCRIPT-SYMBOLS"))))
@@ -99,8 +99,9 @@ register it; otherwise, unregister it."
                (eq (car spec) 'declaim)
                (consp (cadr spec))
                (eq (caadr spec) 'interval))
-          (parse-interval (cdadr spec))
-          (error "Unexpected interval spec ~S for script ~S" spec pathname)))))
+          (let ((interval (parse-interval (cdadr spec))))
+            (constantly interval))
+          (error "Unexpected delay specifier ~S for script ~S" spec pathname)))))
 
 (defun parse-interval (spec)
   "Parse a task interval from a specification like (5 minutes 3

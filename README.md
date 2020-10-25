@@ -1,7 +1,8 @@
 # horae
 
-An application (read: hack) that runs Lisp scripts at certain
-intervals.
+An application (read: hack) that runs Lisp scripts between delays.
+
+Currently only running at a particular time interval is implemented.
 
 Currently SBCL-specific.
 
