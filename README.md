@@ -2,7 +2,8 @@
 
 An application (read: hack) that runs Lisp scripts between delays.
 
-Currently only running at a particular time interval is implemented.
+Scripts can run at fixed time intervals or as Poisson processes having
+fixed mean time intervals.
 
 Currently SBCL-specific.
 

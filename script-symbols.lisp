@@ -6,7 +6,7 @@
   (:documentation "Symbols to be available in scripts.")
   (:use #:cl)
   (:export
-   #:interval
+   #:interval #:poisson
    #:second #:seconds
    #:minute #:minutes
    #:hour #:hours

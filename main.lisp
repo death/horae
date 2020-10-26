@@ -99,9 +99,23 @@ register it; otherwise, unregister it."
                (eq (car spec) 'declaim)
                (consp (cadr spec))
                (eq (caadr spec) 'interval))
-          (let ((interval (parse-interval (cdadr spec))))
-            (constantly interval))
+          (make-task-delay-function-from-specifier (cdadr spec))
           (error "Unexpected delay specifier ~S for script ~S" spec pathname)))))
+
+(defun make-task-delay-function-from-specifier (spec)
+  "Create a task delay function from delay specifier."
+  (if (eq (car spec) 'poisson)
+      (let ((interval (parse-interval (cdr spec))))
+        (lambda (task)
+          (declare (ignore task))
+          (next-time 1 interval)))
+      (let ((interval (parse-interval spec)))
+        (constantly interval))))
+
+(defun next-time (rate &optional (s 1.0))
+  "Return a time to wait until the next event occurs, assuming an
+Exponential distribution."
+  (* s (/ (- (log (- 1.0 (random 1.0)))) rate)))
 
 (defun parse-interval (spec)
   "Parse a task interval from a specification like (5 minutes 3

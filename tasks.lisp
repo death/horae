@@ -171,12 +171,15 @@ commands.  Return true if the task should run, and false otherwise."
        (task-log log:debug "Finished waiting, time to run.")
        (return-from task-wait-to-run t))
      (with-lock-held ((task-lock task))
-       (let ((wait-start-time (get-universal-time))
-             (triggered (condition-wait (task-has-pending-commands task)
-                                        (task-lock task)
-                                        :timeout time-to-wait)))
-         (task-log log:debug "Waited " (- (get-universal-time) wait-start-time) " seconds.")
-         (decf time-to-wait (- (get-universal-time) wait-start-time))
+       (let* ((wait-start-time (get-internal-real-time))
+              (triggered (condition-wait (task-has-pending-commands task)
+                                         (task-lock task)
+                                         :timeout time-to-wait))
+              (wait-end-time (get-internal-real-time))
+              (wait-duration (/ (- (float wait-end-time) wait-start-time)
+                                internal-time-units-per-second)))
+         (task-log log:debug "Waited " wait-duration " seconds.")
+         (decf time-to-wait wait-duration)
          (when triggered
            ;; If we define more commands, we may want to implement a
            ;; way to wait the remaining delay without starting over,
