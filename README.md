@@ -28,6 +28,18 @@ rename it to something that begins with `ig-`.
 
 All scripts run concurrently, each in its own thread.
 
+The syntax for the delay specifier in the interval declaration is:
+
+```
+delay-specifier ::= [poisson] <time-amount>*
+
+time-amount ::= <n> <time-unit>
+
+n ::= a number
+
+time-unit ::= second | seconds | minute | minutes | hour | hours | day | days | week | weeks
+```
+
 Example simulation of a typical teenager:
 
 ```lisp
