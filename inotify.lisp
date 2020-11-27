@@ -82,9 +82,9 @@
                          (when (plusp name-length)
                            (with-output-to-string (out)
                              (loop repeat name-length
-                                   for byte = (read-byte stream)
-                                   unless (zerop byte)
-                                   do (write-char (code-char byte) out)))))))
+                                   do (let ((byte (read-byte stream)))
+                                        (unless (zerop byte)
+                                          (write-char (code-char byte) out)))))))))
 
 (defclass inotify-context ()
   ((watchers :initform (make-hash-table) :accessor inotify-watchers)
